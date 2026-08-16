@@ -30,6 +30,7 @@
   var view = null;
   var engine = null;
   var bgmHandle = null;
+  var tutorialForceOP = false;
 
   var OP_FIRST = 'op-night';
 
@@ -559,12 +560,18 @@
     if (Save.get('skipOP')) {
       items.push({ label: ui.title.watchOp, className: 'g-choice--center', onClick: function () { startGame(true); } });
     }
+    items.push({ label: ui.title.help, className: 'g-choice--center', onClick: function () { eng.goto('help'); } });
     items.push({ label: ui.title.settings, className: 'g-choice--quiet g-choice--center', onClick: function () { eng.goto('settings'); } });
     view.buttons(items, { stagger: true });
     return Promise.resolve(true);
   }
 
   function startGame(forceOP) {
+    if (!Save.get('tutorialSeen')) {
+      tutorialForceOP = !!forceOP;
+      engine.goto('help');
+      return;
+    }
     Sound.unlock();
     if (!Save.get('soundChosen')) {
       Save.set('muted', false);
@@ -577,6 +584,31 @@
     updateHud();
     if (!forceOP && Save.get('skipOP')) { skipOpening(); return; }
     engine.goto(engine.has(OP_FIRST) ? OP_FIRST : 'walk');
+  }
+
+  function helpMode(scene, eng) {
+    var h = DATA.ui().help;
+    view.showHud(false);
+    toggleSkipUI(false);
+    view.block('g-help', [
+      { className: 'g-help__heading', text: h.heading },
+      { className: 'g-help__intro', text: h.intro },
+      { className: 'g-help__item', text: h.distance },
+      { className: 'g-help__item', text: h.time },
+      { className: 'g-help__item', text: h.mental },
+      { className: 'g-help__item g-help__item--danger', text: h.choices },
+      { className: 'g-help__warning', text: h.warning }
+    ]);
+    view.buttons([
+      { label: h.begin, className: 'g-choice--primary', onClick: function () {
+        Save.set('tutorialSeen', true);
+        var forceOP = tutorialForceOP;
+        tutorialForceOP = false;
+        startGame(forceOP);
+      } },
+      { label: h.back, className: 'g-choice--quiet', onClick: function () { eng.goto('title'); } }
+    ], { stagger: true });
+    return Promise.resolve(true);
   }
 
   /** OP スキップ時の状態引き渡し (spec.md §7.2) */
@@ -821,6 +853,7 @@
   /* タイトル・設定・リザルト・本編は Frontend 実装のシーン(データ不要) */
   var SYSTEM_SCENES = [
     { id: 'title', mode: 'title', bg: 'black' },
+    { id: 'help', mode: 'help', bg: 'black' },
     { id: 'settings', mode: 'settings', bg: 'black' },
     { id: 'result', mode: 'result', bg: 'black', layer: 'result' },
     { id: 'walk', mode: 'walk', bg: 'street', chapter: 'main' }
@@ -1019,6 +1052,7 @@
     var storyScenes = DATA.scenes();
     engine.load(storyScenes.length ? storyScenes : FALLBACK_STORY_SCENES);
     engine.registerMode('title', titleMode);
+    engine.registerMode('help', helpMode);
     engine.registerMode('settings', settingsMode);
     engine.registerMode('result', resultMode);
     engine.registerMode('walk', walkMode);

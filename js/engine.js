@@ -93,7 +93,7 @@
   var SAVE_VERSION = 1;
 
   function defaultSave() {
-    return { v: SAVE_VERSION, skipOP: false, muted: true, soundChosen: false, bgmVolume: 0.7, plays: 0, achievements: [], endings: [] };
+    return { v: SAVE_VERSION, skipOP: false, muted: true, soundChosen: false, bgmVolume: 0.7, tutorialSeen: false, plays: 0, achievements: [], endings: [] };
   }
 
   var Save = {
