@@ -549,9 +549,9 @@
     toggleSkipUI(false);
     var total = DATA.achievementList().length;
     var got = (Save.get('achievements') || []).length;
-    view.block('g-title', [
-      { className: 'g-title__main', text: ui.title.main },
-      { className: 'g-title__sub', text: ui.title.sub },
+    view.block('g-title g-title--visual', [
+      { className: 'g-sr', text: ui.title.main },
+      { className: 'g-sr', text: ui.title.sub },
       { className: 'g-title__sub g-text--small', text: got + ' ' + ui.achievements.countSep + ' ' + total + '　' + ui.achievements.countNote }
     ]);
     var items = [
@@ -799,7 +799,7 @@
    * ===================================================================== */
   /* data/ui.js が無いときの下敷き。キー構成は data/ui.js と同じ */
   var FALLBACK_UI = {
-    title: { main: '会社まであと100m', sub: '', start: 'はじめる', watchOp: 'OPを見る', settings: '設定' },
+    title: { main: '出社まで、あと100m。', sub: '', start: 'はじめる', watchOp: 'OPを見る', help: '遊び方', settings: '設定' },
     result: {
       label: '記録', secToday: '今日', secAch: '実績',
       stats: [
@@ -852,7 +852,7 @@
 
   /* タイトル・設定・リザルト・本編は Frontend 実装のシーン(データ不要) */
   var SYSTEM_SCENES = [
-    { id: 'title', mode: 'title', bg: 'black' },
+    { id: 'title', mode: 'title', bg: 'keyvisual' },
     { id: 'help', mode: 'help', bg: 'black' },
     { id: 'settings', mode: 'settings', bg: 'black' },
     { id: 'result', mode: 'result', bg: 'black', layer: 'result' },

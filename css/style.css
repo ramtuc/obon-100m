@@ -272,6 +272,16 @@ button {
 /* 純黒 */
 .g-bg--black { background-image: none; background-color: #000; }
 
+/* タイトル用キービジュアル。縦長端末でも文字を切らず、全体を見せる。 */
+.g-bg--keyvisual {
+  background-color: #000;
+  background-image:
+    linear-gradient(180deg, transparent 48%, rgba(0, 0, 0, 0.72) 76%, #000 100%),
+    url('../keyvisual.png');
+  background-size: 100% auto;
+  background-position: center top;
+}
+
 /* 画面の縁をわずかに沈ませる。黒に奥行きが出て、白文字が浮く。 */
 .g-vignette {
   position: absolute;
@@ -984,6 +994,7 @@ button {
    ------------------------------------------------------------------------- */
 
 .g-title { text-align: center; }
+.g-title--visual { margin-top: auto; }
 
 .g-title__main {
   font-family: var(--g-font-text);

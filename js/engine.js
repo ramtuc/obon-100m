@@ -247,7 +247,7 @@
   };
 
   /** css-classes.md §16。切替は modifier の張り替えだけ */
-  var BG_KEYS = ['room-night', 'room-dark', 'room-morning', 'street', 'office-front', 'black'];
+  var BG_KEYS = ['room-night', 'room-dark', 'room-morning', 'street', 'office-front', 'keyvisual', 'black'];
 
   /**
    * 演出の待ち時間は CSS 変数から読む(css-classes.md §13)。

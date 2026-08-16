@@ -16,7 +16,7 @@ window.GAME_UI = {
    * (1) タイトル画面  — css-classes.md §10 g-title
    * ================================================================== */
   title: {
-    main: '会社まであと100m',      // g-title__main(確定)
+    main: '出社まで、あと100m。',  // g-title__main(確定)
     sub: 'お盆明け、月曜。',        // g-title__sub
     start: 'はじめる',              // 初回・2回目以降とも共通
     watchOp: 'OPを見る',            // skipOP===true のときだけ併置(spec.md §7.3)
