@@ -1,0 +1,1680 @@
+@charset "UTF-8";
+/* ============================================================================
+   会社まであと100m  —  style.css
+   Art-1 / Visual & Sound Director
+
+   方針:
+     - 黒地に小さい白文字。スマホ縦画面(375x667)第一優先。
+     - 演出は「間」が命。派手なアニメより、止まる時間と余白と小ささを優先。
+     - 外部アセット(画像/Webフォント/CDN)は一切使わない。全てコードで描く。
+     - OS のライト/ダーク設定に関わらず、常に同じ「夜」の見た目になる。
+
+   クラス名は BEM 風 + 接頭辞 `g-` (game)。
+   一覧と用途: .ai-team/artifacts/css-classes.md
+   ========================================================================= */
+
+
+/* ----------------------------------------------------------------------------
+   1. トークン
+   ------------------------------------------------------------------------- */
+
+:root {
+  /* この宣言が要。UA にダークUIを強制し、Chrome/WebView の
+     自動ダーク化(force-dark)や iOS の自動反転から配色を守る。 */
+  color-scheme: dark;
+
+  /* --- 色: 夜 --- */
+  --g-bg:          #000000;
+  --g-bg-raise:    #0a0a0a;   /* わずかに浮いた面(通知枠など) */
+  /* 明度の階段。下の2つは「読ませない」ためのもので、
+     意味のある文字・触れる部品には使わないこと(黒地で 3:1 を割る)。 */
+  --g-fg:          #e6e6e6;   /* 本文                    16.8:1 */
+  --g-fg-dim:      #8c8c8c;   /* 補助                     6.2:1 */
+  --g-fg-quiet:    #6e6e6e;   /* 小さいが読ませる情報・操作部品  4.0:1 */
+  --g-fg-faint:    #4a4a4a;   /* 装飾。読めなくてよい        2.4:1 */
+  --g-fg-ghost:    #2a2a2a;   /* 罫の代わり。文字には使わない */
+  --g-line:        rgba(255, 255, 255, 0.14);
+  --g-line-soft:   rgba(255, 255, 255, 0.07);
+  --g-press:       rgba(255, 255, 255, 0.09);
+
+  /* --- 色: 朝(アラーム画面だけ反転する) --- */
+  --g-paper:       #f4f3ef;
+  --g-ink:         #101010;
+  --g-ink-dim:     #6b6b6b;
+
+  /* --- 色: 状態 --- */
+  --g-warn:        #b8544e;   /* メンタル危険域。彩度は落とす */
+  --g-good:        #85a08c;   /* ごく稀な回復イベント */
+
+  /* --- 文字 --- */
+  --g-font-ui:   system-ui, -apple-system, "Segoe UI", "Hiragino Kaku Gothic ProN",
+                 "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", Meiryo, sans-serif;
+  /* 本文は等幅寄り。欧文は等幅、和文はゴシック(和文はもともと全角固定幅)。
+     文字が升目に並ぶことで、感情ではなく記録として読める。 */
+  --g-font-text: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+                 "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic",
+                 Meiryo, monospace;
+  /* ここぞの場面用の明朝(.g-text--mincho) */
+  --g-font-mincho: "Hiragino Mincho ProN", "Hiragino Mincho Pro", "Yu Mincho",
+                 YuMincho, "Noto Serif JP", "MS PMincho", serif;
+  --g-font-num:  ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+                 "Courier New", monospace;
+
+  --g-fs-body:   15px;
+  --g-fs-small:  12px;
+  --g-fs-micro:  11px;
+  --g-lh-body:   2.15;        /* 行間は広く。読ませずに、間を作る */
+  --g-ls:        0.08em;
+
+  /* --- 間(タイミング) --- */
+  --g-t-fade:      900ms;     /* シーン切替 */
+  --g-t-black:     1200ms;    /* 暗転 */
+  --g-t-quick:     220ms;     /* ボタン等の反応 */
+  --g-t-toast-in:  420ms;
+  --g-t-toast-hold:2600ms;
+  --g-t-toast-out: 700ms;
+  --g-ease:        cubic-bezier(0.22, 0.61, 0.36, 1);
+  --g-ease-in:     cubic-bezier(0.55, 0.06, 0.68, 0.19);
+
+  /* --- 寸法 --- */
+  --g-pad:   24px;
+  --g-max:   480px;           /* PCでも縦長のまま中央に置く */
+
+  /* --- 重なり --- */
+  --g-z-scene:   1;
+  --g-z-hud:     5;
+  --g-z-overlay: 20;
+  --g-z-black:   40;
+  --g-z-alarm:   60;
+  --g-z-toast:   80;
+  --g-z-sys:     90;
+}
+
+/* OS がライトでも、この作品は夜のまま。
+   値を明示的に再宣言して「システム既定に落ちる」経路を塞ぐ。 */
+@media (prefers-color-scheme: light) {
+  :root {
+    color-scheme: dark;
+    --g-bg: #000000;
+    --g-fg: #e6e6e6;
+    --g-paper: #f4f3ef;
+    --g-ink: #101010;
+  }
+}
+
+
+/* ----------------------------------------------------------------------------
+   2. リセット
+   ------------------------------------------------------------------------- */
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html, body,
+h1, h2, h3, p, ul, ol, li, figure, blockquote {
+  margin: 0;
+  padding: 0;
+}
+
+ul, ol { list-style: none; }
+
+html {
+  background: var(--g-bg);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  background: var(--g-bg);
+  color: var(--g-fg);
+  font-family: var(--g-font-ui);
+  font-size: var(--g-fs-body);
+  line-height: var(--g-lh-body);
+  letter-spacing: var(--g-ls);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+  overflow: hidden;               /* 画面は1枚。スクロールさせない */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+img, svg { max-width: 100%; display: block; }
+
+button {
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+  touch-action: manipulation;     /* ダブルタップ拡大と300ms遅延を殺す */
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+::selection { background: #333; color: #fff; }
+
+/* キーボード操作の可視性だけは、演出より優先して残す */
+:focus { outline: none; }
+:focus-visible {
+  outline: 1px solid var(--g-fg);
+  outline-offset: 2px;
+}
+
+/* Windows ハイコントラスト等でも作品の見た目を維持する。
+   ただしフォーカスリングは system color に任せる。 */
+@media (forced-colors: active) {
+  .g-app,
+  .g-alarm,
+  .g-toast { forced-color-adjust: none; }
+  :focus-visible { outline: 2px solid Highlight; }
+}
+
+
+/* ----------------------------------------------------------------------------
+   3. ルートレイアウト
+   ------------------------------------------------------------------------- */
+
+.g-app {
+  position: relative;
+  width: 100%;
+  max-width: var(--g-max);
+  margin: 0 auto;
+  height: 100vh;
+  height: 100dvh;               /* iOS のURLバー伸縮でガタつかせない */
+  overflow: hidden;
+  background: var(--g-bg);
+  isolation: isolate;
+}
+
+/* --- 背景レイヤー(bg キー) ---------------------------------------------
+   data 側の bg 6キーに対応。画像は使わずグラデーションだけで描く。
+   どれも輝度を #2a2b2f 以下に抑えてあるので、小さい白文字が必ず読める。
+   g-app の最初の子として1枚だけ置き、modifier を張り替えて切り替える。 */
+.g-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-color: #000;
+  background-repeat: no-repeat;
+  background-size: cover;
+  opacity: 1;
+  transition: opacity 700ms var(--g-ease);
+}
+
+.g-bg--fading { opacity: 0; }
+
+/* 前夜の部屋。下からスマホの青白い光が顔を照らしている */
+.g-bg--room-night {
+  background-image:
+    radial-gradient(62% 38% at 50% 90%, rgba(96, 128, 178, 0.20), transparent 72%),
+    radial-gradient(90% 60% at 50% 12%, rgba(30, 38, 56, 0.55), transparent 76%),
+    linear-gradient(180deg, #070910 0%, #05070c 58%, #030407 100%);
+}
+
+/* 深夜。ほぼ純黒。カーテンの隙間に細い窓明かりが一本だけ */
+.g-bg--room-dark {
+  background-image:
+    linear-gradient(90deg,
+      transparent 61%,
+      rgba(128, 148, 186, 0.055) 64.5%,
+      rgba(128, 148, 186, 0.075) 66%,
+      rgba(128, 148, 186, 0.04) 68%,
+      transparent 71%),
+    linear-gradient(180deg, #040509 0%, #020304 100%);
+}
+
+/* 朝の部屋。カーテン越しの白い光が斜めに刺す。6枚で一番明るい */
+.g-bg--room-morning {
+  background-image:
+    linear-gradient(102deg,
+      #0a0b0d 0%,
+      #101116 34%,
+      #24262b 52%,
+      #2a2b2f 58%,
+      #16171b 68%,
+      #0b0c0f 88%,
+      #08090b 100%);
+}
+
+/* 通勤路。上が白く灼けた空、下がアスファルト。44%に地平線 */
+.g-bg--street {
+  background-image:
+    radial-gradient(46% 26% at 64% 20%, rgba(255, 242, 208, 0.13), transparent 66%),
+    linear-gradient(180deg,
+      #2b3037 0%,
+      #23262b 26%,
+      #1d2024 42%,
+      #101215 44%,
+      #0f1113 46%,
+      #0a0b0d 76%,
+      #060708 100%);
+}
+
+/* 会社の前。冷たい灰のビルの垂直線。下へ向かって重くなる */
+.g-bg--office-front {
+  background-image:
+    repeating-linear-gradient(90deg,
+      rgba(255, 255, 255, 0.030) 0 1px,
+      transparent 1px 27px),
+    repeating-linear-gradient(180deg,
+      rgba(255, 255, 255, 0.018) 0 1px,
+      transparent 1px 44px),
+    linear-gradient(180deg, #1b1e22 0%, #121417 46%, #08090b 82%, #040506 100%);
+}
+
+/* 純黒 */
+.g-bg--black { background-image: none; background-color: #000; }
+
+/* 画面の縁をわずかに沈ませる。黒に奥行きが出て、白文字が浮く。 */
+.g-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: var(--g-z-scene);
+  pointer-events: none;
+  background: radial-gradient(120% 80% at 50% 42%,
+              rgba(0, 0, 0, 0) 38%,
+              rgba(0, 0, 0, 0.55) 100%);
+  opacity: 0.9;
+  transition: opacity var(--g-t-black) var(--g-ease);
+}
+
+/* メンタルが削れてきたら、視界を少し狭める */
+.g-app--strain .g-vignette { opacity: 1; }
+.g-app--strain .g-scene__body { filter: contrast(0.94) brightness(0.92); }
+.g-app--low .g-vignette { opacity: 1; }
+.g-app--low .g-scene__body { filter: saturate(0.72) brightness(0.9); }
+.g-app--critical .g-vignette {
+  background: radial-gradient(72% 58% at 50% 45%, transparent 18%, rgba(0, 0, 0, 0.88) 100%);
+  animation: g-critical-breathe 2.8s ease-in-out infinite;
+}
+.g-app--critical .g-text { text-shadow: 0 0 10px rgba(255,255,255,0.08); }
+
+@keyframes g-critical-breathe {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 1; }
+}
+
+
+/* ----------------------------------------------------------------------------
+   4. シーン(1画面)
+   ------------------------------------------------------------------------- */
+
+.g-scene {
+  position: absolute;
+  inset: 0;
+  z-index: var(--g-z-scene);
+  display: flex;
+  flex-direction: column;
+  padding:
+    calc(var(--g-pad) + env(safe-area-inset-top))
+    calc(var(--g-pad) + env(safe-area-inset-right))
+    calc(var(--g-pad) + env(safe-area-inset-bottom))
+    calc(var(--g-pad) + env(safe-area-inset-left));
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity var(--g-t-fade) var(--g-ease),
+    visibility 0s linear var(--g-t-fade);
+}
+
+.g-scene--on {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition:
+    opacity var(--g-t-fade) var(--g-ease),
+    visibility 0s linear 0s;
+}
+
+/* 本文置き場。既定は縦中央 */
+.g-scene__body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 0;
+  transition: filter var(--g-t-black) var(--g-ease);
+}
+
+.g-scene--top    .g-scene__body { justify-content: flex-start; padding-top: 12vh; }
+.g-scene--bottom .g-scene__body { justify-content: flex-end; }
+
+/* 選択肢・操作の置き場 */
+.g-scene__foot {
+  flex: 0 0 auto;
+  padding-top: 28px;
+}
+
+
+/* ----------------------------------------------------------------------------
+   5. 本文テキスト
+   ------------------------------------------------------------------------- */
+
+.g-text {
+  font-family: var(--g-font-text);
+  font-size: var(--g-fs-body);
+  line-height: var(--g-lh-body);
+  letter-spacing: var(--g-ls);
+  color: var(--g-fg);
+  text-wrap: pretty;
+  word-break: normal;
+  overflow-wrap: anywhere;
+  line-break: strict;
+}
+
+.g-text__line { display: block; min-height: 1em; }
+.g-text__line + .g-text__line { margin-top: 0.4em; }
+
+/* 段落の間は「読点」ではなく「沈黙」。広く取る */
+.g-text + .g-text { margin-top: 1.6em; }
+
+.g-text--dim    { color: var(--g-fg-dim); }
+.g-text--faint  { color: var(--g-fg-faint); }
+.g-text--small  { font-size: var(--g-fs-small); }
+.g-text--center { text-align: center; }
+.g-text--ui     { font-family: var(--g-font-ui); }
+/* 回想・独白など、ここぞの場面だけ明朝に落とす */
+.g-text--mincho { font-family: var(--g-font-mincho); letter-spacing: 0.06em; }
+
+/* 心の声 */
+.g-text--inner {
+  color: var(--g-fg-dim);
+  font-style: normal;
+  padding-left: 1em;
+  border-left: 1px solid var(--g-fg-ghost);
+}
+
+/* タイプライタ表示のオプション。
+   1文字を <span class="g-text__char"> で包めば、ポンと出ずに滲んで出る。
+   親に .g-text--instant を付けると全文即時表示になる(クリック時)。 */
+.g-text__char {
+  opacity: 0;
+  animation: g-char-in 240ms var(--g-ease) forwards;
+}
+.g-text--instant .g-text__char {
+  animation: none;
+  opacity: 1;
+}
+@keyframes g-char-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* 次を促す印。点滅は遅く、小さく */
+.g-next {
+  display: inline-block;
+  margin-left: 0.5em;
+  font-size: var(--g-fs-micro);
+  color: var(--g-fg-faint);
+  animation: g-next-blink 1.8s steps(1, end) infinite;
+}
+@keyframes g-next-blink {
+  0%, 60%  { opacity: 1; }
+  61%,100% { opacity: 0; }
+}
+
+
+/* ----------------------------------------------------------------------------
+   6. 選択肢
+   ------------------------------------------------------------------------- */
+
+.g-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.g-choice {
+  display: block;
+  width: 100%;
+  padding: 15px 16px;
+  font-family: var(--g-font-ui);
+  font-size: var(--g-fs-small);
+  line-height: 1.7;
+  letter-spacing: 0.1em;
+  text-align: left;
+  color: var(--g-fg);
+  background: transparent;
+  border: 1px solid var(--g-line);
+  border-radius: 1px;
+  transition:
+    background-color var(--g-t-quick) var(--g-ease),
+    border-color var(--g-t-quick) var(--g-ease),
+    color var(--g-t-quick) var(--g-ease),
+    opacity var(--g-t-quick) var(--g-ease);
+}
+
+.g-choice:active { background: var(--g-press); }
+
+@media (hover: hover) {
+  .g-choice:hover { border-color: var(--g-fg-dim); }
+}
+
+/* 進む等の主動線。太くはせず、罫だけ白くする */
+.g-choice--primary { border-color: var(--g-fg-dim); }
+.g-choice--primary:active { background: rgba(255, 255, 255, 0.13); }
+
+/* 中央寄せの短い選択肢(「寝る」が並ぶ場面など) */
+.g-choice--center { text-align: center; letter-spacing: 0.24em; }
+
+/* 選べるが、選ばせたくないもの */
+.g-choice--dim { color: var(--g-fg-dim); border-color: var(--g-line-soft); }
+
+/* 選んではいけない選択肢。警告色にはせず、輪郭だけがわずかに壊れる。 */
+.g-choice--forbidden {
+  color: rgba(255,255,255,0.48);
+  border-style: dashed;
+  text-shadow: 1px 0 rgba(255,255,255,0.18);
+  animation: g-forbidden-drift 3.2s steps(1,end) infinite;
+}
+@keyframes g-forbidden-drift {
+  0%, 94%, 100% { transform: none; }
+  95% { transform: translateX(-1px); }
+  97% { transform: translateX(1px); }
+}
+
+/* 罫のない、囁くような選択肢 */
+.g-choice--quiet {
+  border-color: transparent;
+  color: var(--g-fg-dim);
+  padding-left: 0;
+  padding-right: 0;
+  font-size: var(--g-fs-micro);
+}
+
+.g-choice--disabled,
+.g-choice:disabled {
+  color: var(--g-fg-ghost);
+  border-color: var(--g-line-soft);
+  pointer-events: none;
+}
+
+.g-volume {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  margin: 24px 0 10px;
+  color: var(--g-fg-dim);
+  font-family: var(--g-font-ui);
+  font-size: var(--g-fs-small);
+}
+.g-volume__head { display: flex; justify-content: space-between; }
+.g-volume__input { width: 100%; accent-color: rgba(255,255,255,0.72); }
+
+/* 選択肢は同時に出さない。少し遅れて、上から順に置かれる */
+.g-choices--stagger .g-choice {
+  opacity: 0;
+  animation: g-choice-in 620ms var(--g-ease) forwards;
+}
+.g-choices--stagger .g-choice:nth-child(1) { animation-delay: 240ms; }
+.g-choices--stagger .g-choice:nth-child(2) { animation-delay: 480ms; }
+.g-choices--stagger .g-choice:nth-child(3) { animation-delay: 720ms; }
+.g-choices--stagger .g-choice:nth-child(4) { animation-delay: 960ms; }
+.g-choices--stagger .g-choice:nth-child(5) { animation-delay: 1200ms; }
+.g-choices--stagger .g-choice:nth-child(n + 6) { animation-delay: 1440ms; }
+
+@keyframes g-choice-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+
+/* ----------------------------------------------------------------------------
+   7. HUD(時計・残距離・メンタル)
+   ------------------------------------------------------------------------- */
+
+.g-hud {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--g-z-hud);
+  padding:
+    calc(14px + env(safe-area-inset-top))
+    calc(var(--g-pad) + env(safe-area-inset-right))
+    12px
+    calc(var(--g-pad) + env(safe-area-inset-left));
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--g-t-fade) var(--g-ease);
+}
+
+.g-hud--on { opacity: 1; }
+
+.g-hud__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.g-hud__row + .g-hud__row { margin-top: 10px; }
+
+/* 時計 */
+.g-clock {
+  font-family: var(--g-font-num);
+  font-size: var(--g-fs-small);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  letter-spacing: 0.14em;
+  color: var(--g-fg-dim);
+  transition: color 500ms var(--g-ease);
+}
+
+/* 時刻が跳んだ瞬間だけ、一瞬だけ白くする(「あと5分」用) */
+.g-clock--jump { color: var(--g-fg); animation: g-clock-jump 900ms var(--g-ease); }
+@keyframes g-clock-jump {
+  0%   { opacity: 0.25; }
+  18%  { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+/* 残距離 */
+.g-distance {
+  font-family: var(--g-font-num);
+  font-size: var(--g-fs-small);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.14em;
+  color: var(--g-fg-dim);
+}
+.g-distance__num { font-weight: normal; color: var(--g-fg); }
+
+/* メンタルゲージ。棒は細く、2pxだけ */
+.g-mental {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.g-mental__label {
+  flex: 0 0 auto;
+  font-size: var(--g-fs-micro);
+  letter-spacing: 0.18em;
+  color: var(--g-fg-quiet);
+}
+
+.g-mental__track {
+  flex: 1 1 auto;
+  position: relative;
+  height: 2px;
+  background: var(--g-fg-ghost);
+  overflow: hidden;
+}
+
+.g-mental__fill {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--g-fg);
+  transform-origin: left center;
+  transition:
+    width 700ms var(--g-ease),
+    background-color 700ms var(--g-ease);
+}
+
+.g-mental__value {
+  flex: 0 0 auto;
+  min-width: 2.4em;
+  text-align: right;
+  font-family: var(--g-font-num);
+  font-size: var(--g-fs-micro);
+  font-variant-numeric: tabular-nums;
+  color: var(--g-fg-quiet);
+}
+
+.g-mental--low  .g-mental__fill { background: var(--g-fg-dim); }
+
+.g-mental--critical .g-mental__fill {
+  background: var(--g-warn);
+  animation: g-mental-pulse 2.6s ease-in-out infinite;
+}
+@keyframes g-mental-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.42; }
+}
+
+/* 減った/回復した瞬間の合図。数値ではなく、track を一瞬だけ光らせる */
+.g-mental--hit  .g-mental__track { animation: g-mental-hit 420ms var(--g-ease); }
+.g-mental--heal .g-mental__fill  { background: var(--g-good); }
+@keyframes g-mental-hit {
+  0%   { background: var(--g-warn); }
+  100% { background: var(--g-fg-ghost); }
+}
+
+
+/* ----------------------------------------------------------------------------
+   8. 暗転・フェード
+   ------------------------------------------------------------------------- */
+
+.g-blackout {
+  position: absolute;
+  inset: 0;
+  z-index: var(--g-z-black);
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--g-t-black) var(--g-ease);
+}
+
+.g-blackout--on {
+  opacity: 1;
+  pointer-events: auto;         /* 暗転中は触らせない。それが「間」 */
+}
+
+.g-blackout--slow { transition-duration: 2400ms; }
+.g-blackout--fast { transition-duration: 320ms; }
+
+/* 暗転の底に置く一言(「──三時間後」など) */
+.g-blackout__note {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--g-font-text);
+  font-size: var(--g-fs-small);
+  letter-spacing: 0.3em;
+  color: var(--g-fg-quiet);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 1400ms var(--g-ease) 600ms;
+}
+.g-blackout--on .g-blackout__note { opacity: 1; }
+
+/* 白フラッシュ。アラームの瞬間だけ使う */
+.g-flash {
+  position: absolute;
+  inset: 0;
+  z-index: var(--g-z-alarm);
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+}
+.g-flash--on { animation: g-flash 260ms var(--g-ease-in); }
+@keyframes g-flash {
+  0%   { opacity: 0; }
+  30%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+
+/* ----------------------------------------------------------------------------
+   9. アラーム画面(ここだけ白。朝は暴力)
+   ------------------------------------------------------------------------- */
+
+.g-alarm {
+  position: absolute;
+  inset: 0;
+  z-index: var(--g-z-alarm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding:
+    calc(var(--g-pad) + env(safe-area-inset-top))
+    var(--g-pad)
+    calc(var(--g-pad) + env(safe-area-inset-bottom));
+  background: var(--g-paper);
+  color: var(--g-ink);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 120ms linear,
+    visibility 0s linear 120ms;
+}
+
+/* 出るときは容赦なく一瞬で。消えるときも一瞬 */
+.g-alarm--on {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity 90ms linear, visibility 0s linear 0s;
+}
+
+.g-alarm__label {
+  font-family: var(--g-font-ui);
+  font-size: var(--g-fs-small);
+  letter-spacing: 0.4em;
+  text-indent: 0.4em;
+  color: var(--g-ink-dim);
+}
+
+.g-alarm__time {
+  font-family: var(--g-font-num);
+  font-size: clamp(64px, 25vw, 132px);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  letter-spacing: -0.02em;
+  color: var(--g-ink);
+}
+
+.g-alarm__sub {
+  margin-top: 2px;
+  font-family: var(--g-font-ui);
+  font-size: var(--g-fs-micro);
+  letter-spacing: 0.3em;
+  color: var(--g-ink-dim);
+}
+
+/* 本文スロット。
+   data 側の fx:"alarm" は「テキストを持つビート」に付く(op-morning の
+   「アラーム。」「手が勝手に止めた。」/ ev-phn-14 の2行)。
+   白画面はそれらを覆い隠してしまうので、白の上に黒で置く場所を用意する。
+   中に .g-text__line をそのまま入れられる。 */
+.g-alarm__text {
+  margin-top: 26px;
+  max-width: 300px;
+  font-family: var(--g-font-text);
+  font-size: var(--g-fs-body);
+  line-height: 2.0;
+  letter-spacing: var(--g-ls);
+  text-align: center;
+  color: var(--g-ink);
+}
+
+.g-alarm__text .g-text__line { display: block; min-height: 1em; }
+.g-alarm__text .g-text__line + .g-text__line { margin-top: 0.3em; }
+
+.g-alarm__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 260px;
+  margin-top: 40px;
+}
+
+.g-alarm__btn {
+  padding: 14px 12px;
+  font-family: var(--g-font-ui);
+  font-size: var(--g-fs-small);
+  letter-spacing: 0.24em;
+  text-indent: 0.24em;
+  text-align: center;
+  color: var(--g-ink);
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  border-radius: 1px;
+  background: transparent;
+  transition: background-color var(--g-t-quick) var(--g-ease);
+}
+.g-alarm__btn:active { background: rgba(0, 0, 0, 0.08); }
+
+/* スヌーズは、押しやすいところに大きく置いてある */
+.g-alarm__btn--snooze {
+  border-color: rgba(0, 0, 0, 0.7);
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+/* 止める方は、小さく、下に */
+.g-alarm__btn--stop {
+  border-color: transparent;
+  color: var(--g-ink-dim);
+  font-size: var(--g-fs-micro);
+  padding: 8px;
+}
+
+/* 本編中に鳴るアラーム(ev-phn-14「止め忘れたアラームが鳴り出した。」)用。
+   道の真ん中で寝室の時計とスヌーズボタンを出すわけにはいかないので、
+   時刻もボタンも出さず、白の上に本文だけを置く。
+   Frontend が __time / __actions を描かなければ同じだが、
+   誤って描いても崩れないよう明示的に伏せておく。 */
+.g-alarm--bare .g-alarm__label,
+.g-alarm--bare .g-alarm__time,
+.g-alarm--bare .g-alarm__sub,
+.g-alarm--bare .g-alarm__actions { display: none; }
+
+.g-alarm--bare .g-alarm__text { margin-top: 0; }
+
+/* 鳴っている間の微振動。1px。気づかないが、落ち着かない */
+.g-alarm--buzz { animation: g-alarm-buzz 120ms steps(2, end) infinite; }
+@keyframes g-alarm-buzz {
+  0%   { transform: translate3d(0, 0, 0); }
+  50%  { transform: translate3d(0, 1px, 0); }
+  100% { transform: translate3d(0, 0, 0); }
+}
+
+
+/* ----------------------------------------------------------------------------
+   10. 実績トースト(上からスッと出て、数秒で消える)
+   ------------------------------------------------------------------------- */
+
+.g-toast-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--g-z-toast);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: calc(10px + env(safe-area-inset-top)) 16px 0;
+  pointer-events: none;
+}
+
+.g-toast {
+  width: 100%;
+  max-width: 320px;
+  padding: 9px 14px;
+  background: var(--g-bg-raise);
+  border: 1px solid var(--g-line);
+  border-radius: 2px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.8);
+  /* 追加して放置するだけで、出る→留まる→消える が完走する。
+     消滅は animationend で親が remove すればよい。 */
+  animation:
+    g-toast-cycle
+    calc(var(--g-t-toast-in) + var(--g-t-toast-hold) + var(--g-t-toast-out))
+    var(--g-ease) forwards;
+}
+
+.g-toast__label {
+  display: block;
+  font-size: var(--g-fs-micro);
+  letter-spacing: 0.3em;
+  color: var(--g-fg-quiet);
+}
+
+.g-toast__name {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--g-font-text);
+  font-size: var(--g-fs-small);
+  line-height: 1.6;
+  letter-spacing: 0.06em;
+  color: var(--g-fg);
+}
+
+.g-toast__desc {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--g-fs-micro);
+  line-height: 1.6;
+  color: var(--g-fg-dim);
+}
+
+@keyframes g-toast-cycle {
+  0%   { opacity: 0; transform: translate3d(0, -140%, 0); }
+  /* in: 420 / 3720 ≒ 11.3% */
+  12%  { opacity: 1; transform: translate3d(0, 0, 0); }
+  /* hold まで */
+  81%  { opacity: 1; transform: translate3d(0, 0, 0); }
+  100% { opacity: 0; transform: translate3d(0, -8px, 0); }
+}
+
+/* 手動で出し入れしたい場合はこちら(animation を打ち消す) */
+.g-toast--manual { animation: none; opacity: 0; transform: translate3d(0, -140%, 0); }
+.g-toast--manual.g-toast--in {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--g-t-toast-in) var(--g-ease),
+    transform var(--g-t-toast-in) var(--g-ease);
+}
+.g-toast--manual.g-toast--out {
+  opacity: 0;
+  transform: translate3d(0, -8px, 0);
+  transition:
+    opacity var(--g-t-toast-out) var(--g-ease),
+    transform var(--g-t-toast-out) var(--g-ease);
+}
+
+
+/* ----------------------------------------------------------------------------
+   11. スマホ通知オーバーレイ(チャット)
+   ------------------------------------------------------------------------- */
+
+.g-phone {
+  align-self: center;
+  width: 100%;
+  max-width: 300px;
+  margin: 0 auto;
+  padding: 11px 13px;
+  background: var(--g-bg-raise);
+  border: 1px solid var(--g-line);
+  border-radius: 8px;
+  opacity: 0;
+  transform: translate3d(0, 6px, 0);
+  transition:
+    opacity 520ms var(--g-ease),
+    transform 520ms var(--g-ease);
+}
+.g-phone--on { opacity: 1; transform: none; }
+
+.g-phone__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: var(--g-fs-micro);
+  letter-spacing: 0.14em;
+  color: var(--g-fg-quiet);
+}
+
+.g-phone__app  { color: var(--g-fg-dim); }
+.g-phone__time { font-family: var(--g-font-num); }
+
+.g-phone__from {
+  margin-top: 5px;
+  font-size: var(--g-fs-micro);
+  color: var(--g-fg-dim);
+}
+
+.g-phone__msg {
+  margin-top: 2px;
+  font-family: var(--g-font-text);
+  font-size: var(--g-fs-small);
+  line-height: 1.85;
+  color: var(--g-fg);
+}
+
+
+/* ----------------------------------------------------------------------------
+   12. タイトル / エンディング
+   ------------------------------------------------------------------------- */
+
+.g-title { text-align: center; }
+
+.g-title__main {
+  font-family: var(--g-font-text);
+  font-size: 20px;
+  font-weight: normal;
+  line-height: 1.9;
+  letter-spacing: 0.22em;
+  text-indent: 0.22em;
+  color: var(--g-fg);
+}
+
+.g-title__sub {
+  margin-top: 14px;
+  font-size: var(--g-fs-micro);
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
+  color: var(--g-fg-quiet);
+}
+
+.g-ending { text-align: center; }
+
+.g-ending__label {
+  font-size: var(--g-fs-micro);
+  letter-spacing: 0.4em;
+  text-indent: 0.4em;
+  color: var(--g-fg-quiet);
+}
+
+.g-ending__name {
+  margin-top: 12px;
+  font-family: var(--g-font-text);
+  font-size: 17px;
+  line-height: 1.9;
+  letter-spacing: 0.18em;
+  text-indent: 0.18em;
+  color: var(--g-fg);
+}
+
+.g-ending__note {
+  margin-top: 20px;
+  font-family: var(--g-font-text);
+  font-size: var(--g-fs-small);
+  color: var(--g-fg-dim);
+}
+
+
+/* ----------------------------------------------------------------------------
+   12.5 リザルト画面(spec.md §2.1 の「リザルト20秒」)
+
+   方針: 褒めない。ねぎらわない。数字を淡々と置くだけ。
+   見立ては「勤怠記録」あるいは「レシート」。点線リーダーで項目と数字を繋ぎ、
+   数字は等幅で右に揃える。祝祭色・バッジ・スコア・星は一切使わない。
+
+   構造(縦3段。中央だけがスクロールする):
+     .g-result
+       ├ .g-result__head   固定。結末の名前
+       ├ .g-result__body   ★ここだけスクロール(実績16本でも破綻しない)
+       └ .g-result__foot   固定。もう一度 / スキップ設定
+   ------------------------------------------------------------------------- */
+
+/* スクロールを成立させるため、リザルトを載せるシーンは余白を持たない */
+.g-scene--result { padding: 0; }
+
+.g-result {
+  flex: 1 1 auto;
+  min-height: 0;               /* ★これが無いと子が縮まずスクロールしない */
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+/* --- 上段: 結末 --------------------------------------------------------- */
+
+.g-result__head {
+  flex: 0 0 auto;
+  padding:
+    calc(22px + env(safe-area-inset-top))
+    calc(var(--g-pad) + env(safe-area-inset-right))
+    14px
+    calc(var(--g-pad) + env(safe-area-inset-left));
+  border-bottom: 1px solid var(--g-line-soft);
+}
+
+.g-result__label {
+  display: block;
+  font-size: var(--g-fs-micro);
+  letter-spacing: 0.4em;
+  text-indent: 0.4em;
+  color: var(--g-fg-quiet);
+}
+
+.g-result__ending {
+  display: block;
+  margin-top: 8px;
+  font-family: var(--g-font-text);
+  font-size: 15px;
+  line-height: 1.7;
+  letter-spacing: 0.14em;
+  color: var(--g-fg);
+}
+
+/* --- 中段: スクロールする本体 -------------------------------------------- */
+
+.g-result__body {
+  flex: 1 1 auto;
+  min-height: 0;               /* ★同上 */
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding:
+    18px
+    calc(var(--g-pad) + env(safe-area-inset-right))
+    22px
+    calc(var(--g-pad) + env(safe-area-inset-left));
+  /* 上下端を溶かして「まだ続く」ことを示す。非対応環境では単に効かないだけ */
+  -webkit-mask-image: linear-gradient(180deg,
+      transparent 0, #000 16px, #000 calc(100% - 24px), transparent 100%);
+  mask-image: linear-gradient(180deg,
+      transparent 0, #000 16px, #000 calc(100% - 24px), transparent 100%);
+}
+
+/* スクロールバーは残す(あることが「まだ下がある」の合図になる)。細く、暗く */
+.g-result__body { scrollbar-width: thin; scrollbar-color: var(--g-fg-ghost) transparent; }
+.g-result__body::-webkit-scrollbar { width: 3px; }
+.g-result__body::-webkit-scrollbar-track { background: transparent; }
+.g-result__body::-webkit-scrollbar-thumb { background: var(--g-fg-ghost); border-radius: 2px; }
+
+/* 節見出し */
+.g-result__sec {
+  display: block;
+  margin: 0 0 10px;
+  font-size: var(--g-fs-micro);
+  font-weight: normal;
+  letter-spacing: 0.34em;
+  text-indent: 0.34em;
+  color: var(--g-fg-quiet);
+}
+
+.g-result__sec + .g-result__sec,
+.g-result__group + .g-result__group { margin-top: 26px; }
+
+.g-result__group { display: block; }
+.g-result__group + .g-result__group { padding-top: 24px; border-top: 1px solid var(--g-line-soft); }
+
+/* --- スタッツ(記録) ----------------------------------------------------- */
+
+.g-stats { display: block; margin: 0; }
+
+.g-stats__row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 0;
+}
+
+.g-stats__key {
+  flex: 0 0 auto;
+  font-size: var(--g-fs-small);
+  letter-spacing: 0.1em;
+  color: var(--g-fg-dim);
+}
+
+/* 点線リーダー。項目と数字を繋ぐ。帳簿の顔になる */
+.g-stats__dots {
+  flex: 1 1 auto;
+  min-width: 14px;
+  align-self: center;
+  height: 0;
+  border-bottom: 1px dotted var(--g-fg-ghost);
+  transform: translateY(2px);
+}
+
+.g-stats__val {
+  flex: 0 0 auto;
+  font-family: var(--g-font-num);
+  font-size: var(--g-fs-body);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  letter-spacing: 0.06em;
+  color: var(--g-fg);
+}
+
+.g-stats__unit {
+  flex: 0 0 auto;
+  margin-left: 3px;
+  font-size: var(--g-fs-micro);
+  color: var(--g-fg-quiet);
+}
+
+/* 数字でない値(「あり」「なし」)。同じ重さで置く。判定しない */
+.g-stats__val--text {
+  font-family: var(--g-font-ui);
+  font-size: var(--g-fs-small);
+  letter-spacing: 0.14em;
+}
+
+/* opt-in。既定では使わないこと。
+   褒めないということは、責めないということでもある。 */
+.g-stats__val--warn { color: var(--g-warn); }
+
+/* 一発で全部出さず、上から順に置かれていく。記録が印字される速さ */
+.g-stats--print .g-stats__row {
+  opacity: 0;
+  animation: g-result-line 520ms var(--g-ease) forwards;
+}
+.g-stats--print .g-stats__row:nth-child(1) { animation-delay: 120ms; }
+.g-stats--print .g-stats__row:nth-child(2) { animation-delay: 300ms; }
+.g-stats--print .g-stats__row:nth-child(3) { animation-delay: 480ms; }
+.g-stats--print .g-stats__row:nth-child(4) { animation-delay: 660ms; }
+.g-stats--print .g-stats__row:nth-child(5) { animation-delay: 840ms; }
+.g-stats--print .g-stats__row:nth-child(6) { animation-delay: 1020ms; }
+.g-stats--print .g-stats__row:nth-child(n + 7) { animation-delay: 1200ms; }
+
+@keyframes g-result-line {
+  from { opacity: 0; transform: translateY(3px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* --- 取得数 / 総数 ------------------------------------------------------- */
+
+.g-count { display: block; margin-bottom: 12px; }
+
+.g-count__nums {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.g-count__got {
+  font-family: var(--g-font-num);
+  font-size: 24px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--g-fg);
+}
+
+.g-count__sep   { font-family: var(--g-font-num); font-size: 13px; color: var(--g-fg-quiet); }
+.g-count__total { font-family: var(--g-font-num); font-size: 13px; font-variant-numeric: tabular-nums; color: var(--g-fg-dim); }
+
+.g-count__note {
+  margin-left: auto;
+  font-size: var(--g-fs-micro);
+  letter-spacing: 0.14em;
+  color: var(--g-fg-quiet);
+}
+
+/* 進捗は線1本。メンタルゲージより更に細くして、生きた指標でないことを示す */
+.g-count__bar {
+  display: block;
+  margin-top: 9px;
+  height: 1px;
+  background: var(--g-fg-ghost);
+  overflow: hidden;
+}
+
+.g-count__fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--g-fg-dim);
+  transition: width 900ms var(--g-ease);
+}
+
+/* --- 実績一覧 ----------------------------------------------------------- */
+
+.g-achs { display: block; margin: 0; }
+
+.g-ach {
+  display: grid;
+  grid-template-columns: 13px 1fr auto;
+  column-gap: 9px;
+  row-gap: 2px;
+  align-items: baseline;
+  padding: 9px 0 9px 0;
+  border-bottom: 1px solid var(--g-line-soft);
+}
+
+.g-ach:last-child { border-bottom: 0; }
+
+/* 左の印。取得は塗り、未取得は点 */
+.g-ach__mark {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: start;
+  align-self: center;
+  width: 5px;
+  height: 5px;
+  margin-top: 1px;
+  background: var(--g-fg);
+}
+
+.g-ach__name {
+  grid-column: 2;
+  grid-row: 1;
+  font-family: var(--g-font-text);
+  font-size: var(--g-fs-small);
+  line-height: 1.6;
+  letter-spacing: 0.08em;
+  color: var(--g-fg);
+}
+
+.g-ach__desc {
+  grid-column: 2 / span 2;
+  grid-row: 2;
+  font-size: var(--g-fs-micro);
+  line-height: 1.7;
+  letter-spacing: 0.06em;
+  color: var(--g-fg-dim);
+}
+
+/* 「今回」。NEW とは書かない。祝わない */
+.g-ach__new {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+  font-size: var(--g-fs-micro);
+  letter-spacing: 0.2em;
+  text-indent: 0.2em;
+  color: var(--g-fg-quiet);
+}
+
+/* 取得済み(既定の見た目) */
+.g-ach--got .g-ach__mark { background: var(--g-fg); }
+
+/* このプレイで解除した分。左に1本線を引くだけ。色は変えない。
+   「家を出た」がここで回収される */
+.g-ach--new {
+  margin-left: -13px;
+  padding-left: 12px;
+  border-left: 1px solid var(--g-fg);
+}
+
+/* 未取得。名前は残すが沈め、一言は伏せる */
+.g-ach--locked .g-ach__mark {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--g-fg-ghost);
+}
+/* 沈めるが、読めなくはしない。
+   未取得の名前は「あと何が残っているか」= 再プレイの動機そのものなので、
+   ここに --g-fg-faint(2.4:1) を使うと動機ごと消える。 */
+.g-ach--locked .g-ach__name { color: var(--g-fg-quiet); }
+.g-ach--locked .g-ach__desc { display: none; }
+
+/* 名前ごと伏せたい場合はこちらを name の代わりに置く(CSSで描く伏せ字) */
+.g-ach__redact {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+  height: 7px;
+  width: 58%;
+  max-width: 170px;
+  background: repeating-linear-gradient(90deg,
+      var(--g-fg-ghost) 0 9px, transparent 9px 13px);
+}
+
+/* hidden かつ未取得。存在ごと消す。
+   総数(16)との差だけが、まだ何かあることを示す */
+.g-ach--hidden { display: none; }
+
+/* --- 下段: 導線 --------------------------------------------------------- */
+
+.g-result__foot {
+  flex: 0 0 auto;
+  padding:
+    14px
+    calc(var(--g-pad) + env(safe-area-inset-right))
+    calc(16px + env(safe-area-inset-bottom))
+    calc(var(--g-pad) + env(safe-area-inset-left));
+  border-top: 1px solid var(--g-line-soft);
+  background: var(--g-bg);
+}
+
+.g-result__actions { display: flex; flex-direction: column; gap: 10px; }
+
+/* チェックはフッタでは中央に置く */
+.g-result__foot .g-check { align-self: center; }
+
+/* 画面が低い端末では、記録の行間と実績の行を詰める */
+@media (max-height: 680px) {
+  .g-result__head { padding-top: calc(16px + env(safe-area-inset-top)); padding-bottom: 11px; }
+  .g-result__body { padding-top: 14px; padding-bottom: 18px; }
+  .g-stats__row   { padding: 5px 0; }
+  .g-ach          { padding: 7px 0; }
+  .g-result__group + .g-result__group { padding-top: 18px; }
+  .g-count__got   { font-size: 21px; }
+}
+
+
+/* ----------------------------------------------------------------------------
+   13. システムUI(スキップ・チェック・音量)
+   ------------------------------------------------------------------------- */
+
+.g-skip {
+  position: absolute;
+  right: calc(14px + env(safe-area-inset-right));
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  z-index: var(--g-z-sys);
+  padding: 8px 12px;
+  font-size: var(--g-fs-micro);
+  letter-spacing: 0.2em;
+  text-indent: 0.2em;
+  color: var(--g-fg-quiet);
+  border: 1px solid var(--g-line-soft);
+  border-radius: 1px;
+  transition: color var(--g-t-quick) var(--g-ease),
+              border-color var(--g-t-quick) var(--g-ease);
+}
+.g-skip:active { color: var(--g-fg-dim); border-color: var(--g-line); }
+.g-skip--hidden { display: none; }
+
+/* 「次回から常にスキップ」 */
+.g-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  font-size: var(--g-fs-micro);
+  letter-spacing: 0.12em;
+  color: var(--g-fg-dim);
+  cursor: pointer;
+}
+
+.g-check__box {
+  flex: 0 0 auto;
+  position: relative;
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--g-fg-quiet);
+  border-radius: 1px;
+}
+
+.g-check__box::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 0px;
+  width: 4px;
+  height: 8px;
+  border-right: 1px solid var(--g-fg);
+  border-bottom: 1px solid var(--g-fg);
+  transform: rotate(42deg) scale(0.6);
+  opacity: 0;
+  transition: opacity 160ms var(--g-ease), transform 160ms var(--g-ease);
+}
+
+.g-check--on .g-check__box { border-color: var(--g-fg-dim); }
+.g-check--on .g-check__box::after { opacity: 1; transform: rotate(42deg) scale(1); }
+
+/* ネイティブ checkbox を使う場合はこれで隠す */
+.g-check__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.g-check__input:checked + .g-check__box { border-color: var(--g-fg-dim); }
+.g-check__input:checked + .g-check__box::after { opacity: 1; transform: rotate(42deg) scale(1); }
+.g-check__input:focus-visible + .g-check__box { outline: 1px solid var(--g-fg); outline-offset: 2px; }
+
+/* 音量(ミュート)切替。常に隅にいる */
+.g-sound {
+  position: absolute;
+  left: calc(10px + env(safe-area-inset-left));
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  z-index: var(--g-z-sys);
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--g-fs-micro);
+  letter-spacing: 0;
+  color: var(--g-fg-quiet);
+  transition: color var(--g-t-quick) var(--g-ease);
+}
+.g-sound--on { color: var(--g-fg); }
+.g-sound:active { color: var(--g-fg); }
+
+/* アイコンは画像を使わず、罫線で描く(スピーカー + 消音の斜線) */
+.g-sound__icon {
+  position: relative;
+  width: 13px;
+  height: 13px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+}
+.g-sound__icon::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border: 1px solid currentColor;
+  border-radius: 1px;
+  opacity: 0;
+  transition: opacity var(--g-t-quick) var(--g-ease);
+}
+.g-sound--on .g-sound__icon::before { opacity: 1; }
+.g-sound__icon::after {
+  content: "";
+  position: absolute;
+  left: -3px;
+  top: 50%;
+  width: 19px;
+  height: 1px;
+  background: currentColor;
+  transform: rotate(-45deg);
+  transform-origin: center;
+  transition: opacity var(--g-t-quick) var(--g-ease);
+}
+.g-sound--on .g-sound__icon::after { opacity: 0; }
+
+
+/* ----------------------------------------------------------------------------
+   13.5 fx(data 側の fx 9値に対応)
+
+   none / dim / flash / glitch / shake / slow / alarm / notify / blackout
+   このうち flash / alarm / blackout は既存の専用コンポーネント(第6・7・9節)を
+   そのまま使うので、ここで新しく作るのは 5 つだけ。
+   使い方と対応表: .ai-team/artifacts/css-classes.md 第15節
+   ------------------------------------------------------------------------- */
+
+/* --- dim: 画面全体がすっと沈む。一番よく使う「効いてるのが分かる最小の演出」 */
+.g-fx--dim .g-scene__body { animation: g-fx-dim 1600ms var(--g-ease); }
+.g-fx--dim .g-vignette    { animation: g-fx-dim-vig 1600ms var(--g-ease); }
+
+@keyframes g-fx-dim {
+  0%   { opacity: 1;    filter: none; }
+  32%  { opacity: 0.42; filter: brightness(0.7); }
+  100% { opacity: 1;    filter: none; }
+}
+@keyframes g-fx-dim-vig {
+  0%   { opacity: 0.9; }
+  32%  { opacity: 1; }
+  100% { opacity: 0.9; }
+}
+
+.g-fx--pulse .g-vignette { animation: g-fx-pulse 1500ms ease-out; }
+@keyframes g-fx-pulse {
+  0%, 38%, 100% { opacity: 0.9; }
+  12%, 52% { opacity: 1; }
+}
+
+/* --- glitch: 本文が一瞬だけ横にずれて滲む。時計の「あと5分」と併用する --- */
+.g-fx--glitch .g-text,
+.g-fx--glitch .g-clock { animation: g-fx-glitch 700ms steps(1, end); }
+
+@keyframes g-fx-glitch {
+  0%   { transform: none;                    opacity: 1;    text-shadow: none; }
+  8%   { transform: translate3d(-3px, 0, 0); opacity: 0.75; text-shadow: 2px 0 rgba(255,255,255,0.35); }
+  16%  { transform: translate3d(2px, 0, 0);  opacity: 1;    text-shadow: -2px 0 rgba(255,255,255,0.25); }
+  24%  { transform: none;                    opacity: 0.9;  text-shadow: none; }
+  38%  { transform: translate3d(1px, 0, 0);  opacity: 0.6;  text-shadow: 1px 0 rgba(255,255,255,0.3); }
+  48%  { transform: none;                    opacity: 1;    text-shadow: none; }
+  100% { transform: none;                    opacity: 1;    text-shadow: none; }
+}
+
+/* --- shake: 2px の短い横揺れ。使いすぎると安っぽくなる --- */
+.g-fx--shake { animation: g-fx-shake 460ms var(--g-ease); }
+
+@keyframes g-fx-shake {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  12%      { transform: translate3d(-2px, 0, 0); }
+  28%      { transform: translate3d(2px, 0, 0); }
+  44%      { transform: translate3d(-1px, 0, 0); }
+  62%      { transform: translate3d(1px, 0, 0); }
+  80%      { transform: translate3d(-1px, 0, 0); }
+}
+
+/* --- slow: 時間そのものを伸ばす。
+       個別の要素に触らず、変数を上書きするだけで画面全体が遅くなる。
+       派手さゼロで一番「効く」演出。 */
+.g-fx--slow {
+  --g-t-fade:  2250ms;
+  --g-t-black: 3000ms;
+  --g-t-quick:  550ms;
+}
+
+/* --- notify: 画面上端がじわっと明るむ。通知が来た気配だけ --- */
+.g-fx--notify::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 34%;
+  z-index: var(--g-z-overlay);
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(190, 210, 245, 0.13), transparent 100%);
+  animation: g-fx-notify 900ms var(--g-ease);
+}
+
+@keyframes g-fx-notify {
+  0%   { opacity: 0; }
+  22%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+
+/* ----------------------------------------------------------------------------
+   14. ユーティリティ
+   ------------------------------------------------------------------------- */
+
+.g-hidden       { display: none !important; }
+.g-invisible    { opacity: 0 !important; pointer-events: none !important; }
+.g-nointeract   { pointer-events: none !important; }
+.g-center       { text-align: center; }
+.g-spacer       { flex: 1 1 auto; }
+
+/* 汎用フェード。JS で付け外しする */
+.g-fade         { transition: opacity var(--g-t-fade) var(--g-ease); }
+.g-fade--out    { opacity: 0; }
+.g-fade--in     { opacity: 1; }
+
+/* 読み上げ専用 */
+.g-sr {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+
+/* ----------------------------------------------------------------------------
+   15. 環境ごとの調整
+   ------------------------------------------------------------------------- */
+
+/* 小さい端末(iPhone SE 375x667 以下) */
+@media (max-height: 680px) {
+  :root {
+    --g-pad: 20px;
+    --g-lh-body: 1.95;
+  }
+  .g-scene__foot { padding-top: 20px; }
+  .g-alarm__actions { margin-top: 26px; }
+}
+
+@media (max-width: 340px) {
+  :root { --g-pad: 16px; --g-fs-body: 14px; }
+}
+
+/* 横画面。想定外だが崩さない */
+@media (orientation: landscape) and (max-height: 480px) {
+  :root { --g-pad: 16px; --g-lh-body: 1.8; }
+  .g-scene__body { padding-top: 0; }
+  .g-scene--top .g-scene__body { padding-top: 4vh; }
+  .g-alarm__time { font-size: clamp(48px, 12vh, 88px); }
+  .g-alarm__actions { margin-top: 16px; flex-direction: row; max-width: 380px; }
+}
+
+/* 大きい画面では、余白側を黒で埋めて縦長のまま見せる */
+@media (min-width: 520px) {
+  html, body { background: #000; }
+  .g-app { border-left: 1px solid rgba(255,255,255,0.05);
+           border-right: 1px solid rgba(255,255,255,0.05); }
+}
+
+/* 動きを減らす設定。演出の芯は「間」なので、動きは削っても壊れない */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  /* ただしトーストは「出て消える」ことが情報なので、時間だけは残す */
+  .g-toast {
+    animation: g-toast-cycle-reduced
+      calc(var(--g-t-toast-in) + var(--g-t-toast-hold) + var(--g-t-toast-out))
+      linear forwards !important;
+  }
+  .g-alarm--buzz { animation: none !important; }
+  .g-mental--critical .g-mental__fill { animation: none !important; opacity: 1; }
+  .g-next { animation: none !important; opacity: 1; }
+  /* fx: 揺れ・ずれは消すが、明暗の変化は「情報」なので残す */
+  .g-fx--shake, .g-fx--glitch .g-text, .g-fx--glitch .g-clock { animation: none !important; }
+  .g-fx--dim .g-scene__body { animation-duration: 1600ms !important; }
+  .g-fx--dim .g-vignette    { animation-duration: 1600ms !important; }
+  .g-fx--notify::after      { animation-duration: 900ms !important; }
+  .g-app--critical .g-vignette { animation: none !important; }
+  /* リザルトの印字演出。待たせるだけになるので、遅延ごと消して一度に出す */
+  .g-stats--print .g-stats__row { animation-delay: 0ms !important; opacity: 1; }
+}
+
+@keyframes g-toast-cycle-reduced {
+  0%   { opacity: 0; }
+  6%   { opacity: 1; }
+  88%  { opacity: 1; }
+  100% { opacity: 0; }
+}

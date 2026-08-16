@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#000000">
+<title>会社まであと100m</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+<!-- マークアップは .ai-team/artifacts/css-classes.md §0 の骨格に準拠。
+     クラス名の正は css-classes.md(Art-1)。id は Frontend-1 が JS から掴む用。 -->
+<div class="g-app" id="app">
+
+  <div class="g-bg g-bg--black" id="bg"></div>
+  <div class="g-vignette"></div>
+
+  <header class="g-hud" id="hud">
+    <div class="g-hud__row">
+      <span class="g-clock" id="clock">--:--</span>
+      <span class="g-distance">あと <span class="g-distance__num" id="dist">100</span>m</span>
+    </div>
+    <div class="g-hud__row">
+      <div class="g-mental" id="mental">
+        <span class="g-mental__label">メンタル</span>
+        <span class="g-mental__track"><span class="g-mental__fill" id="mentalFill"></span></span>
+        <span class="g-mental__value" id="mentalVal">90</span>
+      </div>
+    </div>
+  </header>
+
+  <section class="g-scene" id="scene">
+    <div class="g-scene__body" id="sceneBody"></div>
+    <div class="g-scene__foot" id="sceneFoot">
+      <div class="g-choices" id="choices"></div>
+      <div id="sysbar">
+        <label class="g-check g-hidden" id="skipAlways">
+          <input class="g-check__input" type="checkbox" id="skipAlwaysInput">
+          <span class="g-check__box"></span>
+          <span id="skipAlwaysLabel"></span>
+        </label>
+        <p class="g-text g-text--faint g-text--small g-text--center g-hidden" id="tapHint"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- リザルト(css-classes.md §19 の骨格そのまま。中身は js/engine.js の View.renderResult) -->
+  <section class="g-scene g-scene--result" id="sceneResult">
+    <div class="g-result">
+      <header class="g-result__head">
+        <span class="g-result__label" id="resultLabel"></span>
+        <span class="g-result__ending" id="resultEnding"></span>
+      </header>
+      <div class="g-result__body">
+        <div class="g-result__group">
+          <h2 class="g-result__sec" id="resultSecToday"></h2>
+          <dl class="g-stats g-stats--print" id="resultStats"></dl>
+        </div>
+        <div class="g-result__group">
+          <h2 class="g-result__sec" id="resultSecAch"></h2>
+          <div class="g-count">
+            <div class="g-count__nums">
+              <span class="g-count__got" id="achGot">0</span>
+              <span class="g-count__sep" id="achSep">/</span>
+              <span class="g-count__total" id="achTotal">0</span>
+              <span class="g-count__note" id="achNote"></span>
+            </div>
+            <span class="g-count__bar"><span class="g-count__fill" id="achFill"></span></span>
+          </div>
+          <ul class="g-achs" id="achList"></ul>
+        </div>
+      </div>
+      <footer class="g-result__foot">
+        <div class="g-result__actions" id="resultActions"></div>
+      </footer>
+    </div>
+  </section>
+
+  <div class="g-blackout" id="blackout"><span class="g-blackout__note" id="blackoutNote"></span></div>
+  <div class="g-flash" id="flash"></div>
+
+  <section class="g-alarm" id="alarm">
+    <span class="g-alarm__label" id="alarmLabel">月曜日</span>
+    <span class="g-alarm__time" id="alarmTime">6:50</span>
+    <span class="g-alarm__sub">アラーム</span>
+  </section>
+
+  <div class="g-toast-layer" id="toasts"></div>
+
+  <button class="g-skip g-skip--hidden" id="skip" type="button">スキップ &gt;&gt;</button>
+
+  <button class="g-sound" id="sound" type="button" aria-label="音を鳴らす">
+    <span class="g-sound__icon"></span>
+  </button>
+
+</div>
+
+<!-- 読み込み順は data-schema.md §0 のとおり: data/*.js → js/engine.js → js/main.js
+     (js/audio.js は engine より前に置く。どれが無くても落ちないようにしてある) -->
+<script src="data/events.js"></script>
+<script src="data/scenes.js"></script>
+<script src="data/achievements.js"></script>
+<script src="data/ui.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/main.js"></script>
+
+</body>
+</html>
